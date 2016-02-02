@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -29,6 +30,7 @@ var aflag = flag.Bool("a", false, "print public type and member information")
 var Aflag = flag.Bool("A", false, "print all type and members information")
 var fflag = flag.String("f", "", "Go source filename")
 var acmeFlag = flag.Bool("acme", false, "use current acme window")
+var jsonFlag = flag.Bool("json", false, "output stuff in JSON")
 
 func fail(s string, a ...interface{}) {
 	fmt.Fprint(os.Stderr, "godef: "+fmt.Sprintf(s, a...)+"\n")
@@ -225,7 +227,23 @@ func (o orderedObjects) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
 func done(obj *ast.Object, typ types.Type) {
 	defer os.Exit(0)
 	pos := types.FileSet.Position(types.DeclPos(obj))
-	fmt.Printf("%v\n", pos)
+	if *jsonFlag {
+		jsonMap := make(map[string]string)
+		if pos.Filename != "" {
+			jsonMap["filename"] = pos.Filename
+			if pos.IsValid() {
+				jsonMap["line"] = strconv.Itoa(pos.Line)
+				jsonMap["column"] = strconv.Itoa(pos.Column)
+			}
+		}
+		jsonStr, err := json.Marshal(jsonMap)
+		if err != nil {
+			fmt.Printf("{}\n")
+		}
+		fmt.Printf("%s\n", jsonStr)
+	} else {
+		fmt.Printf("%v\n", pos)
+	}
 	if typ.Kind == ast.Bad || !*tflag {
 		return
 	}
